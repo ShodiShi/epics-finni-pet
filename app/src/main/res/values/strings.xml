@@ -1,0 +1,95 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Питомец Финни</string>
+
+    <!-- Onboarding -->
+    <string name="onboarding_welcome_title">Привет! Я Финни! 🦊</string>
+    <string name="onboarding_welcome_body">Давай вместе научимся обращаться с деньгами и позаботимся обо мне!</string>
+    <string name="onboarding_name_prompt">Как меня назовём?</string>
+    <string name="onboarding_name_hint">Имя питомца</string>
+    <string name="onboarding_concept_title">Как всё устроено</string>
+    <string name="onboarding_concept_earn">Зарабатывай монеты, отвечая на вопросы о деньгах</string>
+    <string name="onboarding_concept_save">Копи монеты в копилке — они будут расти сами</string>
+    <string name="onboarding_concept_spend">Трать с умом на еду и игрушки для питомца</string>
+    <string name="onboarding_concept_share">Делись частью монет — помогай другим</string>
+    <string name="onboarding_start_button">Начать!</string>
+    <string name="onboarding_back">Назад</string>
+    <string name="onboarding_next">Далее</string>
+
+    <!-- Navigation -->
+    <string name="nav_home">Дом</string>
+    <string name="nav_earn">Заработать</string>
+    <string name="nav_shop">Магазин</string>
+    <string name="nav_savings">Копилка</string>
+    <string name="nav_badges">Награды</string>
+
+    <!-- Home -->
+    <string name="home_coins_label">Монеты</string>
+    <string name="home_hunger_label">Сытость</string>
+    <string name="home_happiness_label">Радость</string>
+    <string name="home_streak_label">Дней подряд: %1$d</string>
+    <string name="home_feed_button">Покормить</string>
+    <string name="home_play_button">Играть</string>
+    <string name="home_cost_format">−%1$d</string>
+    <string name="home_mood_happy">%1$s счастлив!</string>
+    <string name="home_mood_neutral">%1$s в порядке</string>
+    <string name="home_mood_sad">%1$s грустит. Покорми и поиграй с ним!</string>
+    <string name="home_not_enough_coins">Не хватает монет. Заработай ещё!</string>
+    <string name="home_greeting">Привет, это %1$s!</string>
+
+    <!-- Earn / Quiz -->
+    <string name="earn_title">Вопрос дня</string>
+    <string name="earn_subtitle">Отвечай правильно и получай монеты</string>
+    <string name="earn_progress">Вопрос %1$d из %2$d</string>
+    <string name="earn_correct_toast">Верно! +%1$d монет</string>
+    <string name="earn_incorrect_toast">Не совсем, но это ничего страшного</string>
+    <string name="earn_explanation_label">Почему:</string>
+    <string name="earn_next_button">Дальше</string>
+    <string name="earn_done_title">Вопросы закончились на сегодня! 🎉</string>
+    <string name="earn_done_body">Ты заработал(а) %1$d монет. Возвращайся завтра за новыми вопросами.</string>
+    <string name="earn_done_button">Отлично!</string>
+
+    <!-- Shop -->
+    <string name="shop_title">Магазин для %1$s</string>
+    <string name="shop_section_need">Нужно (еда)</string>
+    <string name="shop_section_want">Хочется (игрушки)</string>
+    <string name="shop_buy_button">Купить</string>
+    <string name="shop_owned_label">Куплено</string>
+    <string name="shop_price_format">%1$d монет</string>
+    <string name="shop_bought_toast">Ты купил(а) «%1$s»!</string>
+
+    <!-- Savings -->
+    <string name="savings_title">Копилка</string>
+    <string name="savings_goal_label">Цель: %1$s</string>
+    <string name="savings_balance_format">Накоплено %1$d из %2$d</string>
+    <string name="savings_add_button">Положить %1$d монет</string>
+    <string name="savings_add_all_button">Положить всё</string>
+    <string name="savings_interest_message">Копилка принесла +%1$d монет за то, что ты копишь! 🌱</string>
+    <string name="savings_goal_reached_title">Цель достигнута! 🎉</string>
+    <string name="savings_goal_reached_body">Ты скопил(а) на «%1$s». Ты молодец!</string>
+    <string name="savings_new_goal_button">Новая цель</string>
+    <string name="savings_explainer">Деньги в копилке медленно растут сами — это называется «проценты». Чем дольше копишь, тем больше становится!</string>
+
+    <!-- Badges -->
+    <string name="badges_title">Награды</string>
+    <string name="badges_locked">Ещё не получено</string>
+    <string name="badges_unlocked_on">Получено</string>
+    <string name="badges_level_label">Уровень %1$d</string>
+    <string name="badges_level_progress">%1$d / %2$d очков опыта</string>
+
+    <!-- Settings -->
+    <string name="settings_title">Настройки</string>
+    <string name="settings_pet_name">Имя питомца</string>
+    <string name="settings_save_name">Сохранить</string>
+    <string name="settings_reset_button">Сбросить прогресс</string>
+    <string name="settings_reset_dialog_title">Точно сбросить весь прогресс?</string>
+    <string name="settings_reset_dialog_body">Все монеты, накопления и награды будут удалены без возможности восстановления.</string>
+    <string name="settings_reset_confirm">Сбросить</string>
+    <string name="settings_reset_cancel">Отмена</string>
+    <string name="settings_about_title">О игре</string>
+    <string name="settings_about_body">«Питомец Финни» — игра о финансовой грамотности для детей. Хакатон Департамента финансов Москвы.</string>
+
+    <!-- Shared -->
+    <string name="action_close">Закрыть</string>
+    <string name="coins_suffix">монет</string>
+</resources>
