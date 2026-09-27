@@ -4,124 +4,121 @@ import android.content.Context
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
+import kotlinx.coroutines.channels.BufferOverflow
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.MutableSharedFlow
+import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import ru.finnipet.app.data.GameRepository
 import ru.finnipet.app.data.GameState
-import ru.finnipet.app.domain.ItemCategory
-import ru.finnipet.app.domain.Question
-import ru.finnipet.app.domain.SHOP_ITEMS
+import ru.finnipet.app.domain.Badge
+import ru.finnipet.app.domain.SavingsGoal
+import ru.finnipet.app.domain.ShareGoal
 import ru.finnipet.app.domain.applyBadgeUnlocks
-import ru.finnipet.app.domain.applyDayRollover
-import ru.finnipet.app.domain.nextSavingsGoal
-import ru.finnipet.app.domain.todaysQuestions
+import ru.finnipet.app.domain.badge
+import ru.finnipet.app.domain.levelForXp
+import ru.finnipet.app.domain.savingsGoalById
+import ru.finnipet.app.domain.shareGoalById
+import ru.finnipet.app.domain.tick
+import ru.finnipet.app.domain.answerQuestion as answerQuestionRule
+import ru.finnipet.app.domain.answerSortCard as answerSortCardRule
+import ru.finnipet.app.domain.buyItem as buyItemRule
+import ru.finnipet.app.domain.claimChest as claimChestRule
+import ru.finnipet.app.domain.deposit as depositRule
+import ru.finnipet.app.domain.finishSortRound as finishSortRoundRule
+import ru.finnipet.app.domain.petThePet as petRule
+import ru.finnipet.app.domain.share as shareRule
+import ru.finnipet.app.domain.useItem as useItemRule
+
+/** Moments worth a full-screen celebration. */
+sealed interface GameEvent {
+    data class BadgeUnlocked(val badge: Badge) : GameEvent
+    data class LevelUp(val level: Int) : GameEvent
+    data class GoalReached(val goal: SavingsGoal) : GameEvent
+    data class ShareGoalReached(val goal: ShareGoal) : GameEvent
+}
 
 class GameViewModel(private val repository: GameRepository) : ViewModel() {
 
-    val uiState: StateFlow<GameState> =
-        repository.state.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), GameState())
+    val state: StateFlow<GameState?> =
+        repository.state.stateIn(viewModelScope, SharingStarted.Eagerly, null)
+
+    private val _events = MutableSharedFlow<GameEvent>(extraBufferCapacity = 16, onBufferOverflow = BufferOverflow.DROP_OLDEST)
+    val events: SharedFlow<GameEvent> = _events
 
     init {
-        // Corrects the persisted state as soon as a new calendar day is observed.
         viewModelScope.launch {
-            repository.state.collect { state ->
-                val rolled = applyDayRollover(state)
-                if (rolled != state) {
-                    repository.update { applyDayRollover(it) }
-                }
+            while (true) {
+                mutate { tick(it, System.currentTimeMillis()) }
+                delay(CLOCK_STEP_MILLIS)
             }
         }
     }
 
-    private fun mutate(block: (GameState) -> GameState) {
-        viewModelScope.launch { repository.update { applyBadgeUnlocks(block(it)) } }
-    }
-
-    fun completeOnboarding(name: String) = mutate { state ->
-        state.copy(onboardingComplete = true, petName = name.ifBlank { state.petName })
-    }
-
-    fun renamePet(name: String) = mutate { state ->
-        state.copy(petName = name.ifBlank { state.petName })
-    }
-
-    fun acknowledgeInterest() = mutate { state -> state.copy(lastInterestEarned = 0) }
-
-    fun answerQuestion(question: Question, chosenIndex: Int) = mutate { state ->
-        if (question.id in state.currentDayAnsweredIds) return@mutate state
-        val correct = chosenIndex == question.correctIndex
-        val reward = if (correct) question.reward else 0
-        val afterAnswer = state.copy(
-            coins = state.coins + reward,
-            coinsEarnedToday = state.coinsEarnedToday + reward,
-            xp = state.xp + reward,
-            currentDayAnsweredIds = state.currentDayAnsweredIds + question.id,
-            allTimeAnsweredIds = state.allTimeAnsweredIds + question.id,
-        )
-        val todaysBatch = todaysQuestions(state.currentDayEpoch)
-        val completedAllToday = todaysBatch.all { it.id in afterAnswer.currentDayAnsweredIds }
-        if (completedAllToday && state.lastStreakCreditEpoch != state.currentDayEpoch) {
-            afterAnswer.copy(
-                streakDays = afterAnswer.streakDays + 1,
-                lastStreakCreditEpoch = state.currentDayEpoch,
-            )
-        } else {
-            afterAnswer
+    private fun mutate(rule: (GameState) -> GameState) {
+        viewModelScope.launch {
+            val (before, after) = repository.update { applyBadgeUnlocks(rule(it)) }
+            announce(before, after)
         }
     }
 
-    fun buyItem(itemId: String) = mutate { state ->
-        val item = SHOP_ITEMS.firstOrNull { it.id == itemId } ?: return@mutate state
-        if (state.coins < item.cost) return@mutate state
-        state.copy(
-            coins = state.coins - item.cost,
-            inventory = state.inventory + (itemId to (state.inventory[itemId] ?: 0) + 1),
-            totalNeedPurchases = state.totalNeedPurchases + if (item.category == ItemCategory.NEED) 1 else 0,
-            totalWantPurchases = state.totalWantPurchases + if (item.category == ItemCategory.WANT) 1 else 0,
-        )
-    }
-
-    fun feedPet() = mutate { state -> consumeFirstAvailable(state, ItemCategory.NEED, restoresHunger = true) }
-
-    fun playWithPet() = mutate { state -> consumeFirstAvailable(state, ItemCategory.WANT, restoresHunger = false) }
-
-    private fun consumeFirstAvailable(state: GameState, category: ItemCategory, restoresHunger: Boolean): GameState {
-        val availableId = state.inventory.entries.firstOrNull { (id, count) ->
-            count > 0 && SHOP_ITEMS.firstOrNull { it.id == id }?.category == category
-        }?.key ?: return state
-        val item = SHOP_ITEMS.first { it.id == availableId }
-        val newInventory = state.inventory.toMutableMap()
-        val remaining = (newInventory[availableId] ?: 1) - 1
-        if (remaining <= 0) newInventory.remove(availableId) else newInventory[availableId] = remaining
-        return if (restoresHunger) {
-            state.copy(inventory = newInventory, hunger = (state.hunger + item.statGain).coerceAtMost(100))
-        } else {
-            state.copy(inventory = newInventory, happiness = (state.happiness + item.statGain).coerceAtMost(100))
+    private suspend fun announce(before: GameState, after: GameState) {
+        if (!before.onboardingComplete || !after.onboardingComplete) return
+        if (after.goalsReached > before.goalsReached) {
+            after.lastReachedGoalId?.let { _events.emit(GameEvent.GoalReached(savingsGoalById(it))) }
         }
+        if (after.completedShareGoals > before.completedShareGoals) {
+            after.lastCompletedShareGoalId?.let { _events.emit(GameEvent.ShareGoalReached(shareGoalById(it))) }
+        }
+        (after.unlockedBadgeIds - before.unlockedBadgeIds).mapNotNull(::badge).forEach {
+            _events.emit(GameEvent.BadgeUnlocked(it))
+        }
+        val level = levelForXp(after.xp)
+        if (level > levelForXp(before.xp)) _events.emit(GameEvent.LevelUp(level))
     }
 
-    fun depositToSavings(amount: Int) = mutate { state ->
-        val actual = amount.coerceIn(0, state.coins)
-        state.copy(coins = state.coins - actual, savingsBalance = state.savingsBalance + actual)
+    fun completeOnboarding(name: String) = mutate {
+        it.copy(onboardingComplete = true, petName = name.trim().ifBlank { it.petName })
     }
 
-    fun chooseNextSavingsGoal() = mutate { state ->
-        state.copy(savingsGoalId = nextSavingsGoal(state.savingsGoalId).id, savingsBalance = 0)
-    }
+    fun renamePet(name: String) = mutate { it.copy(petName = name.trim().ifBlank { it.petName }) }
+    fun setSound(on: Boolean) = mutate { it.copy(soundOn = on) }
+    fun setMusic(on: Boolean) = mutate { it.copy(musicOn = on) }
+
+    fun answerQuestion(questionId: String, chosenIndex: Int) = mutate { answerQuestionRule(it, questionId, chosenIndex) }
+    fun answerSortCard(correct: Boolean) = mutate { answerSortCardRule(it, correct) }
+    fun finishSortRound(score: Int, total: Int) = mutate { finishSortRoundRule(it, score, total) }
+
+    fun buyItem(itemId: String) = mutate { buyItemRule(it, itemId) }
+    fun useItem(itemId: String) = mutate { useItemRule(it, itemId) }
+    fun petThePet() = mutate(::petRule)
+
+    fun deposit(amount: Int) = mutate { depositRule(it, amount) }
+    fun share(amount: Int) = mutate { shareRule(it, amount) }
+    fun acknowledgeInterest() = mutate { it.copy(lastInterestEarned = 0) }
+    fun claimChest() = mutate(::claimChestRule)
+
+    // Hidden demo tools for presenting the game.
+    fun demoHungry() = mutate { it.copy(hunger = 18f) }
+    fun demoBored() = mutate { it.copy(happiness = 18f) }
+    fun demoCoins() = mutate { it.copy(coins = it.coins + 100) }
+    fun demoNextDay() = mutate { tick(it.copy(debugDayOffset = it.debugDayOffset + 1), System.currentTimeMillis()) }
 
     fun resetProgress() {
         viewModelScope.launch { repository.reset() }
     }
 
     companion object {
+        private const val CLOCK_STEP_MILLIS = 30_000L
+
         fun factory(context: Context): ViewModelProvider.Factory =
             object : ViewModelProvider.Factory {
                 @Suppress("UNCHECKED_CAST")
-                override fun <T : ViewModel> create(modelClass: Class<T>): T {
-                    return GameViewModel(GameRepository(context.applicationContext)) as T
-                }
+                override fun <T : ViewModel> create(modelClass: Class<T>): T =
+                    GameViewModel(GameRepository(context.applicationContext)) as T
             }
     }
 }

@@ -36,3 +36,6 @@ google-services.json
 # Kotlin compiler daemon cache
 .kotlin/
 
+# Python caches from the asset scripts
+__pycache__/
+
