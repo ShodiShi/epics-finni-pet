@@ -101,7 +101,7 @@ class GameViewModel(private val repository: GameRepository) : ViewModel() {
     fun acknowledgeInterest() = mutate { it.copy(lastInterestEarned = 0) }
     fun claimChest() = mutate(::claimChestRule)
 
-    // Hidden demo tools for presenting the game.
+    // Demo mode (Settings → «Демо-режим»): lets a reviewer see the game react without waiting.
     fun demoHungry() = mutate { it.copy(hunger = 18f) }
     fun demoBored() = mutate { it.copy(happiness = 18f) }
     fun demoCoins() = mutate { it.copy(coins = it.coins + 100) }

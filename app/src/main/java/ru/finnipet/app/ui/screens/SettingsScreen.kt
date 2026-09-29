@@ -4,9 +4,8 @@ import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
-import androidx.compose.foundation.clickable
-import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.Row
@@ -41,7 +40,6 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -65,6 +63,9 @@ import ru.finnipet.app.ui.components.ChunkyButton
 import ru.finnipet.app.ui.components.ChunkyColor
 import ru.finnipet.app.ui.components.PetSprite
 import ru.finnipet.app.ui.components.RoundIconButton
+import ru.finnipet.app.ui.components.ToastHost
+import ru.finnipet.app.ui.components.ToastState
+import ru.finnipet.app.ui.components.rememberToastState
 import ru.finnipet.app.ui.fx.LocalFx
 import ru.finnipet.app.ui.fx.Sfx
 import ru.finnipet.app.ui.fx.rememberFeedback
@@ -83,10 +84,9 @@ fun SettingsScreen(state: GameState, viewModel: GameViewModel, onBack: () -> Uni
     val feedback = rememberFeedback()
     val fx = LocalFx.current
     val focus = LocalFocusManager.current
+    val toast = rememberToastState()
     var name by remember(state.petName) { mutableStateOf(state.petName) }
     var confirmReset by remember { mutableStateOf(false) }
-    var versionTaps by rememberSaveable { mutableIntStateOf(0) }
-    val demo = versionTaps >= 5
     val canSave = name.isNotBlank() && name.trim() != state.petName
     var petTop by remember { mutableStateOf(Offset.Zero) }
     var greeting by remember { mutableStateOf("") }
@@ -112,128 +112,111 @@ fun SettingsScreen(state: GameState, viewModel: GameViewModel, onBack: () -> Uni
         }
     }
 
-    Column(
+    Box(
         Modifier
             .fillMaxSize()
             .background(Cream)
-            .statusBarsPadding()
-            .navigationBarsPadding()
-            .verticalScroll(rememberScrollState())
-            .padding(16.dp),
     ) {
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            RoundIconButton(null, "Назад", onBack, size = 44.dp) {
-                Icon(Icons.AutoMirrored.Rounded.ArrowBack, null, tint = InkSoft, modifier = Modifier.size(24.dp))
-            }
-            Spacer(Modifier.width(12.dp))
-            Text("Настройки", style = MaterialTheme.typography.headlineMedium, color = Ink)
-        }
-        Spacer(Modifier.height(16.dp))
-
-        SettingsCard {
+        Column(
+            Modifier
+                .fillMaxSize()
+                .statusBarsPadding()
+                .navigationBarsPadding()
+                .verticalScroll(rememberScrollState())
+                .padding(16.dp),
+        ) {
             Row(verticalAlignment = Alignment.CenterVertically) {
-                PetSprite(
-                    if (greetingShown) PetPose.LOVE else PetPose.WAVE,
-                    height = 96.dp,
-                    modifier = Modifier.onGloballyPositioned {
-                        val bounds = it.boundsInRoot()
-                        petTop = Offset(bounds.center.x, bounds.top + bounds.height * 0.1f)
-                    },
+                RoundIconButton(null, "Назад", onBack, size = 44.dp) {
+                    Icon(Icons.AutoMirrored.Rounded.ArrowBack, null, tint = InkSoft, modifier = Modifier.size(24.dp))
+                }
+                Spacer(Modifier.width(12.dp))
+                Text("Настройки", style = MaterialTheme.typography.headlineMedium, color = Ink)
+            }
+            Spacer(Modifier.height(16.dp))
+
+            SettingsCard {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    PetSprite(
+                        if (greetingShown) PetPose.LOVE else PetPose.WAVE,
+                        height = 96.dp,
+                        modifier = Modifier.onGloballyPositioned {
+                            val bounds = it.boundsInRoot()
+                            petTop = Offset(bounds.center.x, bounds.top + bounds.height * 0.1f)
+                        },
+                    )
+                    Spacer(Modifier.width(10.dp))
+                    Column(Modifier.weight(1f)) {
+                        Text("Имя питомца", style = MaterialTheme.typography.labelLarge, color = InkSoft)
+                        Spacer(Modifier.height(4.dp))
+                        OutlinedTextField(
+                            value = name,
+                            onValueChange = { name = it.take(16) },
+                            singleLine = true,
+                            textStyle = MaterialTheme.typography.titleMedium.copy(color = Ink),
+                            shape = RoundedCornerShape(16.dp),
+                            keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.Words, imeAction = ImeAction.Done),
+                            keyboardActions = KeyboardActions(onDone = { saveName() }),
+                            colors = OutlinedTextFieldDefaults.colors(
+                                focusedBorderColor = FoxOrange,
+                                unfocusedBorderColor = Line,
+                                focusedContainerColor = Paper,
+                                unfocusedContainerColor = Paper,
+                                cursorColor = FoxOrange,
+                            ),
+                        )
+                    }
+                }
+                Spacer(Modifier.height(10.dp))
+                ChunkyButton(
+                    "Сохранить имя",
+                    onClick = ::saveName,
+                    enabled = canSave,
+                    color = ChunkyColor.GREEN,
+                    modifier = Modifier.fillMaxWidth(),
                 )
-                Spacer(Modifier.width(10.dp))
-                Column(Modifier.weight(1f)) {
-                    Text("Имя питомца", style = MaterialTheme.typography.labelLarge, color = InkSoft)
-                    Spacer(Modifier.height(4.dp))
-                    OutlinedTextField(
-                        value = name,
-                        onValueChange = { name = it.take(16) },
-                        singleLine = true,
-                        textStyle = MaterialTheme.typography.titleMedium.copy(color = Ink),
-                        shape = RoundedCornerShape(16.dp),
-                        keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.Words, imeAction = ImeAction.Done),
-                        keyboardActions = KeyboardActions(onDone = { saveName() }),
-                        colors = OutlinedTextFieldDefaults.colors(
-                            focusedBorderColor = FoxOrange,
-                            unfocusedBorderColor = Line,
-                            focusedContainerColor = Paper,
-                            unfocusedContainerColor = Paper,
-                            cursorColor = FoxOrange,
-                        ),
+                AnimatedVisibility(greetingShown) {
+                    Text(
+                        greeting,
+                        style = MaterialTheme.typography.titleSmall,
+                        color = LeafGreen,
+                        textAlign = TextAlign.Center,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(top = 10.dp),
                     )
                 }
             }
-            Spacer(Modifier.height(10.dp))
+
+            DemoCard(viewModel, toast, onBack)
+
+            SettingsCard {
+                ToggleRow(R.drawable.ic_music, "Музыка", state.musicOn) { viewModel.setMusic(it) }
+                Spacer(Modifier.height(8.dp))
+                ToggleRow(R.drawable.ic_sound, "Звуки", state.soundOn) { viewModel.setSound(it) }
+            }
+
+            SettingsCard {
+                Text("Об игре", style = MaterialTheme.typography.titleLarge, color = Ink)
+                Spacer(Modifier.height(4.dp))
+                Text(
+                    "«Питомец Финни» — игра о финансовой грамотности для детей 7–11 лет. " +
+                        "Зарабатывай, трать с умом, копи на мечту и помогай другим вместе с Финни. " +
+                        "Хакатон Департамента финансов города Москвы.",
+                    style = MaterialTheme.typography.bodyMedium, color = InkSoft,
+                )
+                Spacer(Modifier.height(8.dp))
+                Text("Версия ${BuildConfig.VERSION_NAME}", style = MaterialTheme.typography.labelMedium, color = InkSoft)
+            }
+
+            Spacer(Modifier.height(8.dp))
             ChunkyButton(
-                "Сохранить имя",
-                onClick = ::saveName,
-                enabled = canSave,
-                color = ChunkyColor.GREEN,
+                "Сбросить прогресс",
+                onClick = { confirmReset = true },
+                color = ChunkyColor.WHITE,
                 modifier = Modifier.fillMaxWidth(),
             )
-            AnimatedVisibility(greetingShown) {
-                Text(
-                    greeting,
-                    style = MaterialTheme.typography.titleSmall,
-                    color = LeafGreen,
-                    textAlign = TextAlign.Center,
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(top = 10.dp),
-                )
-            }
         }
-
-        SettingsCard {
-            ToggleRow(R.drawable.ic_music, "Музыка", state.musicOn) { viewModel.setMusic(it) }
-            Spacer(Modifier.height(8.dp))
-            ToggleRow(R.drawable.ic_sound, "Звуки", state.soundOn) { viewModel.setSound(it) }
-        }
-
-        SettingsCard {
-            Text("Об игре", style = MaterialTheme.typography.titleLarge, color = Ink)
-            Spacer(Modifier.height(4.dp))
-            Text(
-                "«Питомец Финни» — игра о финансовой грамотности для детей 7–11 лет. " +
-                    "Зарабатывай, трать с умом, копи на мечту и помогай другим вместе с Финни. " +
-                    "Хакатон Департамента финансов города Москвы.",
-                style = MaterialTheme.typography.bodyMedium, color = InkSoft,
-            )
-            Spacer(Modifier.height(8.dp))
-            Text(
-                "Версия ${BuildConfig.VERSION_NAME}",
-                style = MaterialTheme.typography.labelMedium,
-                color = InkSoft,
-                modifier = Modifier.clickable(remember { MutableInteractionSource() }, indication = null) {
-                    versionTaps++
-                    if (versionTaps == 5) feedback.success(Sfx.LEVEL_UP)
-                },
-            )
-        }
-
-        if (demo) {
-            SettingsCard(background = SkyBlueSoft) {
-                Text("Режим презентации", style = MaterialTheme.typography.titleLarge, color = Ink)
-                Text("Быстро показать, как игра меняется со временем.", style = MaterialTheme.typography.bodySmall, color = InkSoft)
-                Spacer(Modifier.height(10.dp))
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    ChunkyButton("Проголодаться", viewModel::demoHungry, color = ChunkyColor.ORANGE, height = 44.dp, modifier = Modifier.weight(1f))
-                    ChunkyButton("Заскучать", viewModel::demoBored, color = ChunkyColor.BLUE, height = 44.dp, modifier = Modifier.weight(1f))
-                }
-                Spacer(Modifier.height(8.dp))
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    ChunkyButton("+100 монет", viewModel::demoCoins, color = ChunkyColor.GOLD, height = 44.dp, modifier = Modifier.weight(1f))
-                    ChunkyButton("Новый день", viewModel::demoNextDay, color = ChunkyColor.GREEN, height = 44.dp, modifier = Modifier.weight(1f))
-                }
-            }
-        }
-
-        Spacer(Modifier.height(8.dp))
-        ChunkyButton(
-            "Сбросить прогресс",
-            onClick = { confirmReset = true },
-            color = ChunkyColor.WHITE,
-            modifier = Modifier.fillMaxWidth(),
-        )
+        ToastHost(toast, Modifier.align(Alignment.TopCenter))
     }
 
     if (confirmReset) {
@@ -260,6 +243,65 @@ fun SettingsScreen(state: GameState, viewModel: GameViewModel, onBack: () -> Uni
                 }
             },
         )
+    }
+}
+
+/**
+ * Demo mode for the people checking the app: shortcuts that show how the game reacts to time and money without
+ * waiting. Every button confirms itself with a toast, since its effect is on other screens.
+ */
+@Composable
+private fun DemoCard(viewModel: GameViewModel, toast: ToastState, onBack: () -> Unit) {
+    SettingsCard(background = SkyBlueSoft) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Text("Демо-режим", style = MaterialTheme.typography.titleLarge, color = Ink)
+            Spacer(Modifier.width(8.dp))
+            Text(
+                "для проверяющих",
+                style = MaterialTheme.typography.labelMedium,
+                color = Ink,
+                modifier = Modifier
+                    .background(Paper, RoundedCornerShape(50))
+                    .padding(horizontal = 10.dp, vertical = 3.dp),
+            )
+        }
+        Spacer(Modifier.height(4.dp))
+        Text(
+            "Покажет, как игра меняется со временем. Кнопки меняют прогресс — вернуть всё можно кнопкой " +
+                "«Сбросить прогресс» ниже.",
+            style = MaterialTheme.typography.bodySmall, color = InkSoft,
+        )
+        Spacer(Modifier.height(12.dp))
+        Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+            DemoButton("Проголодаться", "Финни просит есть", ChunkyColor.ORANGE, Modifier.weight(1f)) {
+                viewModel.demoHungry()
+                toast.show("Финни проголодался", R.drawable.ic_bowl, "К Финни", onBack)
+            }
+            DemoButton("Заскучать", "Финни просит играть", ChunkyColor.BLUE, Modifier.weight(1f)) {
+                viewModel.demoBored()
+                toast.show("Финни заскучал", R.drawable.item_ball, "К Финни", onBack)
+            }
+        }
+        Spacer(Modifier.height(10.dp))
+        Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+            DemoButton("+100 монет", "для покупок и копилки", ChunkyColor.GOLD, Modifier.weight(1f)) {
+                viewModel.demoCoins()
+                toast.show("Добавлено 100 монет", R.drawable.ic_coins_pile)
+            }
+            DemoButton("Новый день", "вопросы, задания, проценты", ChunkyColor.GREEN, Modifier.weight(1f)) {
+                viewModel.demoNextDay()
+                toast.show("Наступил новый день!", R.drawable.ic_seedling, "К Финни", onBack)
+            }
+        }
+    }
+}
+
+@Composable
+private fun DemoButton(title: String, hint: String, color: ChunkyColor, modifier: Modifier = Modifier, onClick: () -> Unit) {
+    Column(modifier, horizontalAlignment = Alignment.CenterHorizontally) {
+        ChunkyButton(title, onClick, color = color, height = 44.dp, modifier = Modifier.fillMaxWidth())
+        Spacer(Modifier.height(2.dp))
+        Text(hint, style = MaterialTheme.typography.labelSmall, color = InkSoft, textAlign = TextAlign.Center)
     }
 }
 

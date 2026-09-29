@@ -39,3 +39,11 @@ google-services.json
 # Python caches from the asset scripts
 __pycache__/
 
+# Working files for the presentation: the organisers' template, the team's personal photos, and the finished deck,
+# which carries the team's phone numbers and photos, so it goes to the organisers and not into the public repo
+ЛЦТ2026 Шаблон презентации.pptx
+ЛЦТ2026 Питомец Финни.pptx
+ЛЦТ2026 Питомец Финни.pdf
+шоди.jpg
+я.jpg
+

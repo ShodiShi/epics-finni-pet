@@ -61,6 +61,6 @@ data class GameState(
     val chestClaimedEpoch: Long = -1,
     val petsToday: Int = 0,
 
-    /** Days added by the hidden demo tools (Settings → tap the version 5 times) to show streaks and interest. */
+    /** Days added by the demo mode (Settings → «Демо-режим» → «Новый день») to show streaks and interest. */
     val debugDayOffset: Int = 0,
 )

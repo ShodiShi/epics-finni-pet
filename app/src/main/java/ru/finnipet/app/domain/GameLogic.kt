@@ -28,7 +28,7 @@ private const val MILLIS_PER_HOUR = 3_600_000f
 fun localEpochDay(nowMillis: Long): Long =
     Instant.ofEpochMilli(nowMillis).atZone(ZoneId.systemDefault()).toLocalDate().toEpochDay()
 
-/** The game's calendar day; the hidden demo tools can move it forward to show streaks and interest. */
+/** The game's calendar day; the demo mode can move it forward to show streaks and interest. */
 fun effectiveDay(state: GameState, nowMillis: Long): Long = localEpochDay(nowMillis) + state.debugDayOffset
 
 // ---- Daily content ------------------------------------------------------------------------------------------------
